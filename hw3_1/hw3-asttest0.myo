@@ -1,0 +1,2 @@
+compiler: unparser.c:66: unparseConstDefs: Assertion `cdfs.type_tag == const_defs_ast' failed.
+Aborted (core dumped)
