@@ -68,10 +68,6 @@ extern void yyerror(const char *filename, const char *msg);
 %token <token> lparensym  "("
 %token <token> rparensym  ")"
 
-
-%token <ast> ast 
-
-
 %type <block> program
 %type <block> block
 %type <const_decls> constDecls
@@ -128,17 +124,11 @@ program : block periodsym { setProgAST($1);} ;
 
 block : constDecls varDecls procDecls stmt {$$ = ast_block($1, $2, $3, $4);} ;
 
-constDecls : constDecl { 
-                         AST x;
-                         x.const_decls.const_decls = &$1;
-                         ast_const_decls(x.const_decls, $1);
-                         
-                        }
-|            constDecls constDecl {$$ = ast_const_decls($1, $2); }
+constDecls : constDecls constDecl {$$ = ast_const_decls($1, $2); } 
 |            empty { $$ = ast_const_decls_empty($1); }
 ;
 
-constDecl :   constsym constDefs { $$ = ast_const_decl($2); };
+constDecl :   constsym constDefs semisym { $$ = ast_const_decl($2); } ;
 
 constDefs :   constDef { $$ = ast_const_defs_singleton($1); }
 |             constDefs commasym constDef { $$ = ast_const_defs($1, $3); }
@@ -146,29 +136,17 @@ constDefs :   constDef { $$ = ast_const_defs_singleton($1); }
 
 constDef : identsym eqsym numbersym { $$ = ast_const_def($1, $3); } ;
 
-varDecls : varDecl { 
-                         AST x;
-                         x.var_decls.var_decls = &$1;
-                         ast_var_decls(x.var_decls, $1);
-                         
-                    }
-|          varDecls varDecl { $$ = ast_var_decls($1, $2); }
+varDecls : varDecls varDecl { $$ = ast_var_decls($1, $2); }
 |          empty { $$ = ast_var_decls_empty($1); }
 ;
 
-varDecl  : varsym idents { $$ = ast_var_decl($2); } ;
+varDecl  : varsym idents semisym { $$ = ast_var_decl($2); } ;
 
 idents  : identsym { $$ = ast_idents_singleton($1) ;} 
 |         idents commasym identsym { $$ = ast_idents($1, $3); }
 ;
 
-procDecls : procDecl { 
-                         AST x;
-                         x.proc_decls.proc_decls = &$1;
-                         ast_proc_decls(x.proc_decls, $1);
-                         
-                    }
-|           procDecls procDecl { $$ = ast_proc_decls($1, $2); }
+procDecls : procDecls procDecl { $$ = ast_proc_decls($1, $2); }
 |           empty { $$ = ast_proc_decls_empty($1); }
 ;
 
@@ -225,7 +203,7 @@ relOp : eqsym
 |       geqsym
 ;
 
-expr :        term  { $$ = $1; }
+expr :        term  
 |             expr plussym term 
                             { AST bin_op_expr;
                              bin_op_expr.binary_op_expr = ast_binary_op_expr($1, $2, $3); 
@@ -238,7 +216,7 @@ expr :        term  { $$ = $1; }
                              }
 ;
 
-term : factor { $$ = $1; }
+term : factor
 |      term multsym factor { 
                              AST bin_op_expr;
                              bin_op_expr.binary_op_expr = ast_binary_op_expr($1, $2, $3); 
@@ -252,11 +230,13 @@ term : factor { $$ = $1; }
 ;
 
 factor : identsym { $$ = ast_expr_ident($1); }
-|        minussym numbersym { $$ = ast_expr_negated_number($1, yylval.number); }
-|        posSign numbersym  { $$ = ast_expr_pos_number($1, yylval.number); }
+|        minussym numbersym { $$ = ast_expr_negated_number($1, $2); }
+|        posSign numbersym  { $$ = ast_expr_pos_number($1, $2); }
 ;
 
-posSign :  plussym  ;
+posSign :  plussym  
+|          empty {ast_token(file_location_make(lexer_filename(), lexer_line()), "+", plussym); }
+;
 
 empty : %empty { file_location *file_loc = file_location_make(lexer_filename(), lexer_line());
                  $$ = ast_empty(file_loc);
